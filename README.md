@@ -1,6 +1,6 @@
 # visual-bots
 ## A minetest programmable bot 
-### (c) 2019 Nigel Garnett
+### (c) 2019 Nigel Garnett, 2021 mmmsued
 Vbots are single block "turtle" style bots, programmable in an entirely visual way.
 They came into existence to amuse my 5 year old daughters, and teach them the basics
 of computer programming, without too much writing.

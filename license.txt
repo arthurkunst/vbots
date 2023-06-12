@@ -2,6 +2,9 @@ Code & anything distributed with this license except items mentioned below is
 (c) 2019 Nigel Garnett under the MIT licence.
 See: https://opensource.org/licenses/MIT
 
+Additional code for bot facing and mesecons support
+(c) 2021 mmmsued (https://github.com/mmmsued)
+
 Icon Images derived by scaling & editing from:
     https://game-icons.net
     Attribution 3.0 Unported (CC BY 3.0) licence.
@@ -43,3 +46,8 @@ Turtle texture derived from
     (c) 2019 Nigel Garnett
     Attribution 3.0 Unported (CC BY 3.0) licence.
     See: https://creativecommons.org/licenses/by/3.0/
+
+    Altered chip bug version
+    (c) 2022 Ilan Backmann
+    Attribution-ShareAlike 4.0 International (CC BY-SA 4.0) licence.
+    See: https://creativecommons.org/licenses/by-sa/4.0/

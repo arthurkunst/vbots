@@ -100,10 +100,11 @@ local function basically_empty(node)
 	end
 end
 
-local function position_bot(pos,newpos)
+local function position_bot(pos,newpos,homefacing)
     local meta = minetest.get_meta(pos)
     local R = meta:get_int("steptime")
     local bot_owner = meta:get_string("owner")
+    local facing = meta:get_string("homefacing")
     if not minetest.is_protected(newpos, bot_owner) then
         local moveto_node = minetest.get_node(newpos)
         if basically_empty(moveto_node) then
@@ -112,6 +113,12 @@ local function position_bot(pos,newpos)
             local elapsed = minetest.get_node_timer(pos):get_elapsed()
             minetest.set_node(pos,{name="air"})
             minetest.set_node(newpos,{name=node.name, param2=node.param2})
+            minetest.get_node_timer(newpos):set(1/R,0)
+             if homefacing == nil then -- Codezeile eingefügt, um beim Home-Button die Ausrichtung einzustellen
+              minetest.swap_node(newpos,{name=node.name, param2=node.param2})
+            else
+              minetest.swap_node(newpos,{name=node.name, param2=facing})
+            end
             minetest.get_node_timer(newpos):set(1/R,0)
             if hold then
                 minetest.get_meta(newpos):from_table(hold)
@@ -256,7 +263,7 @@ local function bot_parsecommand(pos,item)
     elseif item == "vbots:move_home" then
         local newpos = minetest.deserialize(meta:get_string("home"))
         if newpos then
-            position_bot(pos,newpos,bot_owner)
+            position_bot(pos,newpos,"homefacing") -- Codezeile eingefügt, um beim Home-Button die Ausrichtung einzustellen
         end
     elseif item == "vbots:turn_clockwise" then
         bot_turn_clockwise(pos)
@@ -390,10 +397,22 @@ local function register_bot(node_name,node_desc,node_tiles,node_groups)
         groups = node_groups,
         --light_source = 14,
         on_blast = function() end,
+
+        mesecons = {
+      			effector = {
+      	    	action_on = function (pos)
+      					local meta = minetest.get_meta(pos)
+                minetest.after(0, vbots.bot_togglestate, pos, "on")
+      				end
+      	  	}
+      	},
+
         after_place_node = function(pos, placer, itemstack, pointed_thing)
             vbots.bot_init(pos, placer)
             local facing = minetest.dir_to_facedir(placer:get_look_dir())
             facing = (facing+2)%4
+            local meta = minetest.get_meta(pos) -- neu eingefügte Codezeilen, um beim Home-Button die Ausrichtung einzustellen
+            meta:set_string("homefacing", facing)
             facebot(facing,pos)
         end,
         on_punch = function(pos, node, player, pointed_thing)
