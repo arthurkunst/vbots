@@ -111,13 +111,14 @@ local function position_bot(pos,newpos,homefacing)
             local node = minetest.get_node(pos)
             local hold = meta:to_table()
             local elapsed = minetest.get_node_timer(pos):get_elapsed()
+            vbots.all_bots[meta:get_string("key")] = {bot_owner, newpos, meta:get_string("name")}
             minetest.set_node(pos,{name="air"})
             minetest.set_node(newpos,{name=node.name, param2=node.param2})
             minetest.get_node_timer(newpos):set(1/R,0)
-             if homefacing == nil then -- Codezeile eingefügt, um beim Home-Button die Ausrichtung einzustellen
-              minetest.swap_node(newpos,{name=node.name, param2=node.param2})
+            if homefacing == nil then -- Codezeile eingefügt, um beim Home-Button die Ausrichtung einzustellen
+                minetest.swap_node(newpos,{name=node.name, param2=node.param2})
             else
-              minetest.swap_node(newpos,{name=node.name, param2=facing})
+                minetest.swap_node(newpos,{name=node.name, param2=facing})
             end
             minetest.get_node_timer(newpos):set(1/R,0)
             if hold then

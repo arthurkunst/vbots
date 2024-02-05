@@ -7,6 +7,8 @@
 vbots={}
 vbots.modpath = minetest.get_modpath("vbots")
 vbots.bot_info = {}
+vbots.all_bots = {}
+vbots.all_running_bots = {}
 
 local trashInv = minetest.create_detached_inventory(
                     "bottrash",
@@ -65,7 +67,6 @@ vbots.bot_restore = function(pos)
     end
 end
 
-
 -------------------------------------
 -- callback from bot node after_place_node
 -------------------------------------
@@ -74,6 +75,7 @@ vbots.bot_init = function(pos, placer)
     local bot_name = bot_namer()
     local bot_key = vbots.get_key()
     vbots.bot_info[bot_key] = { owner = bot_owner, pos = pos, name = bot_name}
+    vbots.all_bots[bot_key] = {bot_owner, pos, bot_name}
     local meta = minetest.get_meta(pos)
 	meta:set_string("infotext", bot_name .. " (" .. bot_owner .. ")")
     local inv = meta:get_inventory()
@@ -193,14 +195,12 @@ vbots.load = function(pos,player,mode)
     minetest.after(0.2, minetest.show_formspec, player:get_player_name(), formname, formspec)
 end
 
-
-
-
 vbots.bot_togglestate = function(pos,mode)
     local meta = minetest.get_meta(pos)
     local node = minetest.get_node(pos)
     local timer = minetest.get_node_timer(pos)
     local newname
+    local key = meta:get_string("key")
     if not mode then
         if node.name == "vbots:off" then
             mode = "on"
@@ -215,6 +215,8 @@ vbots.bot_togglestate = function(pos,mode)
         meta:set_int("PR",0)
         meta:set_string("stack","")
         meta:set_string("home",minetest.serialize(pos))
+        vbots.remove_running_bot(key)
+        vbots.add_to_all_running_bots(key)
     elseif mode == "off" then
         newname = "vbots:off"
         timer:stop()
@@ -229,8 +231,103 @@ vbots.bot_togglestate = function(pos,mode)
 end
 
 
+-- Returns all vbots of the player to their home and stops their program
+function vbots.return_all_vbots(player)
+    local count = 0
+
+    for key in pairs(vbots.all_bots) do
+        if vbots.return_vbot(player, key) then
+            count = count + 1
+        end
+    end
+    if count == 0 then
+        minetest.sound_play("error",{pos = newpos, gain = 10})
+        minetest.chat_send_player(player, "No bot to move!")
+    else
+        minetest.chat_send_player(player, "Moved ".. count .." bots.")
+    end
+end
+
+-- Returns the first started vbot of the player to its home and stops its program
+function vbots.return_first_vbot(player)
+    --minetest.chat_send_player(player, table.concat(vbots.all_running_bots, ", "))
+
+    for i, key in ipairs(vbots.all_running_bots) do
+        if vbots.return_vbot(player, key) then return end
+    end
+
+    minetest.sound_play("error",{pos = newpos, gain = 10})
+    minetest.chat_send_player(player, "No bot to move!")
+end
+
+-- Returns VBot with Key key to its home
+function vbots.return_vbot(player, key)
+    local pos = vbots.all_bots[key][2]
+    local meta = minetest.get_meta(pos)
+    local bot_owner = meta:get_string("owner")
+    local bot_name = meta:get_string("name")
+    
+    --minetest.chat_send_player(player, "Pos: "..minetest.pos_to_string(pos))
+    --minetest.chat_send_player(player, "Owner: "..bot_owner)
+    --minetest.chat_send_player(player, "Key: "..key)
+
+    if player == bot_owner then
+        local R = meta:get_int("steptime")
+        local facing = meta:get_string("homefacing")
+
+        local newpos = minetest.deserialize(meta:get_string("home"))
+
+        if newpos ~= nil then
+            if not minetest.is_protected(newpos, bot_owner) then
+                local moveto_node = minetest.get_node(newpos)
+                def=minetest.registered_nodes[moveto_node.name]
+                if moveto_node.name == "air" or
+                        def.drawtype=="airlike" or
+                        def.groups.not_in_creative_inventory==1 or
+                        def.buildable_to==true then
+                    local node = minetest.get_node(pos)
+                    local hold = meta:to_table()
+                    local elapsed = minetest.get_node_timer(pos):get_elapsed()
+                    vbots.all_bots[key] = {bot_owner, newpos, meta:get_string("name")}
+                    minetest.set_node(pos,{name="air"})
+                    minetest.set_node(newpos,{name=node.name, param2=node.param2})
+                    minetest.get_node_timer(newpos):set(1/R,0)
+                    minetest.swap_node(newpos,{name=node.name, param2=facing})
+                    minetest.get_node_timer(newpos):set(1/R,0)
+                    if hold then
+                        minetest.get_meta(newpos):from_table(hold)
+                    end
+                    minetest.chat_send_player(player, "Bot moved.")
+                    vbots.bot_togglestate(newpos, "off")
+                    vbots.remove_running_bot(key)
+                    return true
+                end
+                minetest.check_for_falling(newpos)
+            else
+                minetest.sound_play("system-fault",{pos = newpos, gain = 10})
+            end
+        end
+    end
+    return false
+end
+
+-- Adds key of a VBot to the list of all running vbots
+function vbots.add_to_all_running_bots(key)
+    table.insert(vbots.all_running_bots, key)
+end
+
+-- Removes key from list of running VBots
+function vbots.remove_running_bot(key)
+    for i, v in ipairs(vbots.all_running_bots) do
+        if v == key then
+            table.remove(vbots.all_running_bots, i)
+        end
+    end
+end
+
 dofile(vbots.modpath.."/formspec.lua")
 dofile(vbots.modpath.."/formspec_handler.lua")
 dofile(vbots.modpath.."/register_bot.lua")
 dofile(vbots.modpath.."/register_commands.lua")
 dofile(vbots.modpath.."/register_joinleave.lua")
+dofile(vbots.modpath.."/register_remote.lua")

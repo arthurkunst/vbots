@@ -6,6 +6,8 @@ local function bot_rekey(bot_key,meta)
     local new_key = vbots.get_key()
     vbots.bot_info[new_key] = vbots.bot_info[bot_key]
     vbots.bot_info[bot_key] = nil
+    vbots.all_bots[new_key] = vbots.all_bots[bot_key]
+    vbots.all_bots[bot_key] = nil
     meta:set_string("key", new_key)
     return new_key
 end
