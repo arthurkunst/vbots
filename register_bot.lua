@@ -92,7 +92,8 @@ local function basically_empty(node)
 	--print(dump(def))
 	if node.name == "air" or
 			def.drawtype=="airlike" or
-			def.groups.not_in_creative_inventory==1 or
+			def.groups.not_in_creative_inventory==1 and
+            def.groups.unbreakable~=1 or -- Added so that VBots cannot mine unbreakable blocks.
 			def.buildable_to==true then
 		return true
 	else
@@ -185,23 +186,25 @@ local function bot_dig(pos,digy)
         local drop = minetest.get_node(digpos)		
         local node_definition = minetest.registered_nodes[drop.name]
         local drops = minetest.get_node_drops(drop.name)
-        if node_definition.groups.not_in_creative_inventory~=1 then
-            local inv=minetest.get_inventory({
-                                    type="node",
-                                    pos=pos
-                                })
-            for _, itemname in ipairs(drops) do
-                local leftover = inv:add_item("main", ItemStack(itemname))
-                if not leftover then
-                    minetest.sound_play("system-fault",{pos = newpos, gain = 10})
-                    vbots.bot_togglestate(pos,"off")
+        if node_definition.groups.unbreakable ~= 1 then -- Added so that VBots cannot mine unbreakable blocks.
+            if node_definition.groups.not_in_creative_inventory~=1 then
+                local inv=minetest.get_inventory({
+                                        type="node",
+                                        pos=pos
+                                    })
+                for _, itemname in ipairs(drops) do
+                    local leftover = inv:add_item("main", ItemStack(itemname))
+                    if not leftover then
+                        minetest.sound_play("system-fault",{pos = pos, gain = 10})
+                        vbots.bot_togglestate(pos,"off")
+                    end
                 end
+                minetest.set_node(digpos,{name="air"})
+                --minetest.dig_node(digpos)
             end
-            minetest.set_node(digpos,{name="air"})
-            --minetest.dig_node(digpos)
         end
     else
-        minetest.sound_play("system-fault",{pos = newpos, gain = 10})
+        minetest.sound_play("system-fault",{pos = pos, gain = 10})
     end
 end
 
@@ -445,6 +448,7 @@ local function register_bot(node_name,node_desc,node_tiles,node_groups)
             local meta = minetest.get_meta(pos)
             local bot_key = meta:get_string("key")
             vbots.bot_info[bot_key] = nil
+            vbots.all_bots[bot_key] = nil
             clean_bot_table()
         end
     })
